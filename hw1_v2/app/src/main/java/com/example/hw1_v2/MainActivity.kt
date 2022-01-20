@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import com.example.hw1_v2.databinding.ActivityMainBinding
 import kotlinx.coroutines.*
@@ -20,41 +21,26 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.*
 
-const val TEMP_LENGTH = 512
-
-class DownloadWebPicture {
-    var currentUrl: String? = null
-    var img: Bitmap? = null
-    var progress: Int = 0
-    var tempDownloadImage = ByteArray(1)
-    var length: Int = 0
-    var desPos = 0
-    var isPause: Boolean = false
-    var isOver: Boolean = false
-
-    fun cleanTempData() {
-        this.currentUrl = null
-        this.img = null
-        this.progress = 0
-        this.tempDownloadImage = ByteArray(1)
-        this.desPos = 0
-        this.isPause = false
-        this.isOver = false
-    }
-}
+const val DOWNLOAD_BUFFER_SIZE = 512
 
 
 class MainActivity : AppCompatActivity() {
     private var testUrl = "https://images2.gamme.com.tw/news2/2017/77/08/qZqRoJ_WlKWXsKU.jpg"
 
-    private lateinit var downloader: DownloadWebPicture
+    private lateinit var downloader: DownloadingPicture
 
     // binding name is equal to you layout name
     private lateinit var binding: ActivityMainBinding
 
+    val downloadCoroutineScope = CoroutineScope(Dispatchers.Default)
+
+
+
     private suspend fun getUrlPic(url: String?) {
+        lateinit var inputStream:InputStream
+        lateinit var httpURLConnection: HttpURLConnection
         try {
-            val httpURLConnection: HttpURLConnection =
+            httpURLConnection =
                 URL(url).openConnection() as HttpURLConnection
             httpURLConnection.setRequestProperty(
                 "Range",
@@ -68,8 +54,8 @@ class MainActivity : AppCompatActivity() {
 
             httpURLConnection.connect()
 
-            val inputStream: InputStream = httpURLConnection.inputStream
-            val tmp = ByteArray(TEMP_LENGTH)
+            inputStream = httpURLConnection.inputStream
+            val tmp = ByteArray(DOWNLOAD_BUFFER_SIZE)
             var readLen: Int
 
             if (url != downloader.currentUrl) {
@@ -117,15 +103,22 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
-            httpURLConnection.disconnect()
-            inputStream.close()
         }
         catch (e: Exception) {
             Log.v("kevin IOException", e.toString())
+        } finally {
+            if (inputStream != null){
+                inputStream.close()
+            }
+            if (httpURLConnection != null) {
+                httpURLConnection.disconnect()
+            }
+
         }
     }
 
     private suspend fun updateProgressBar(readLen: Int) {
+        // two function should put in different place
         downloader.desPos += readLen
         downloader.progress =
             (downloader.desPos * 100 / downloader.length)
@@ -175,60 +168,65 @@ class MainActivity : AppCompatActivity() {
         val view = binding.root
         setContentView(view)
 
-        downloader = DownloadWebPicture()
+        downloader = DownloadingPicture()
     }
 
     override fun onResume() {
         super.onResume()
 
         binding.inputUrl.setText(testUrl)
-        var usedUrl = ""
-        val downloadCoroutineScope = CoroutineScope(Dispatchers.Default)
 
+        binding.startButton.setOnClickListener(onStartClick())
 
+        binding.pauseButton.setOnClickListener(onPauseClick())
 
-        binding.startButton.setOnClickListener {
-            usedUrl = binding.inputUrl.text.toString()
-            downloadCoroutineScope.launch {
-                downloader.cleanTempData()
-                getUrlPic(usedUrl)
-                withContext(Dispatchers.Main) {
-                    binding.showDonwloadImag.setImageBitmap(downloader.img)
-                }
+        binding.resumeButton.setOnClickListener(onResumeClick())
 
-                saveImage()
-            }
-        }
+        binding.cancelButton.setOnClickListener(onCancelClick())
+    }
 
-        binding.pauseButton.setOnClickListener {
+    private fun onCancelClick(): (View) -> Unit = {
+        downloadCoroutineScope.launch {
+            downloader.cleanTempData()
             downloader.isPause = true
-        }
-
-        binding.resumeButton.setOnClickListener {
-            downloader.isPause = false
-            downloadCoroutineScope.launch {
-                getUrlPic(usedUrl)
-                withContext(Dispatchers.Main) {
-                    binding.showDonwloadImag.setImageBitmap(downloader.img)
-                }
-                saveImage()
+            downloader.isOver = true
+            withContext(Dispatchers.Main) {
+                binding.showDonwloadImag.setImageBitmap(downloader.img)
+                binding.progressBar.progress = downloader.progress
+                binding.progressNum.text = downloader.progress.toString()
             }
-        }
 
-        binding.cancelButton.setOnClickListener {
-            downloadCoroutineScope.launch {
-                downloader.cleanTempData()
-                downloader.isPause = true
-                downloader.isOver = true
-                withContext(Dispatchers.Main) {
-                    binding.showDonwloadImag.setImageBitmap(downloader.img)
-                    binding.progressBar.progress = downloader.progress
-                    binding.progressNum.text = downloader.progress.toString()
-                }
-
-            }
         }
     }
+
+    private fun onResumeClick(): (View) -> Unit = {
+        downloader.isPause = false
+        downloadCoroutineScope.launch {
+            getUrlPic(downloader.currentUrl)
+            withContext(Dispatchers.Main) {
+                binding.showDonwloadImag.setImageBitmap(downloader.img)
+            }
+            saveImage()
+        }
+    }
+
+    private fun onPauseClick(): (View) -> Unit = {
+        downloader.isPause = true
+    }
+
+    private fun onStartClick(): (View) -> Unit =
+        {
+            val usedUrl = binding.inputUrl.text.toString()
+            downloadCoroutineScope.launch {
+                downloader.cleanTempData()
+                getUrlPic(usedUrl)
+                withContext(Dispatchers.Main) {
+                    binding.showDonwloadImag.setImageBitmap(downloader.img)
+                }
+
+                saveImage()
+            }
+        }
 
     private fun saveImage() {
         val imgName = UUID(3, 5).toString()
