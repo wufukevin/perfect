@@ -1,16 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.example.hw1_v2">
     <!--apply internet connect    -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!--apply storage permission-->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
 
     <application
+        android:usesCleartextTraffic="true"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Hw1_v2">
+        android:theme="@style/Theme.Hw1_v2"
+        tools:targetApi="m">
         <activity
             android:name=".MainActivity"
             android:exported="true">
