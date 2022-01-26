@@ -1,11 +1,11 @@
-package tech.thdev.mediacodecexample.audio
+package com.example.myapplication.audio
 
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
-import tech.thdev.mediacodecexample.R
-import tech.thdev.mediacodecexample.databinding.AudioActivityBinding
+import com.example.myapplication.R
+//import com.example.myapplication.databinding.AudioActivityBinding
 
 
 class AACAudioDecodeActivity : AppCompatActivity() {
@@ -16,26 +16,26 @@ class AACAudioDecodeActivity : AppCompatActivity() {
             Intent(context, AACAudioDecodeActivity::class.java)
     }
 
-    private val audioDecoder: AACAudioDecoderThread by lazy {
-        AACAudioDecoderThread()
-    }
+//    private val audioDecoder: AACAudioDecoderThread by lazy {
+//        AACAudioDecoderThread()
+//    }
 
     private val audioPathAAC by lazy {
         resources.openRawResourceFd(R.raw.bensound_littleidea_aac)
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        val binding = AudioActivityBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+//    override fun onCreate(savedInstanceState: Bundle?) {
+//        super.onCreate(savedInstanceState)
+//        val binding = AudioActivityBinding.inflate(layoutInflater)
+//        setContentView(binding.root)
+//
+//        binding.playAac.setOnClickListener {
+//            audioDecoder.startPlay(audioPathAAC)
+//        }
+//    }
 
-        binding.playAac.setOnClickListener {
-            audioDecoder.startPlay(audioPathAAC)
-        }
-    }
-
-    override fun onPause() {
-        super.onPause()
-        audioDecoder.stop()
-    }
+//    override fun onPause() {
+//        super.onPause()
+//        audioDecoder.stop()
+//    }
 }

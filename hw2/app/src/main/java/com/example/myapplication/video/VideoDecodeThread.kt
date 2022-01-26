@@ -1,11 +1,13 @@
-package tech.thdev.mediacodecexample.video
+package com.example.myapplication.video
 
 import android.content.res.AssetFileDescriptor
 import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
+import android.os.Build
 import android.util.Log
 import android.view.Surface
+import androidx.annotation.RequiresApi
 import java.nio.ByteBuffer
 
 
@@ -25,6 +27,7 @@ class VideoDecodeThread : Thread() {
     //用extractor取得video type
     //建立對應的 decoder
     //start decoder
+    @RequiresApi(Build.VERSION_CODES.N)
     fun init(surface: Surface, file: AssetFileDescriptor): Boolean {
         isStop = false
         try {

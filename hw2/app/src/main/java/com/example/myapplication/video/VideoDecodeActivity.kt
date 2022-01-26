@@ -1,12 +1,15 @@
-package tech.thdev.mediacodecexample.video
+package com.example.myapplication.video
 
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
+//K: what is surfaceHolder??
 import android.view.SurfaceHolder
 import android.view.SurfaceView
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
-import tech.thdev.mediacodecexample.R
+import com.example.myapplication.R
 
 
 class VideoDecodeActivity : AppCompatActivity(), SurfaceHolder.Callback {
@@ -42,6 +45,7 @@ class VideoDecodeActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
     }
 
+    @RequiresApi(Build.VERSION_CODES.N)
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
         if (videoDecode?.init(holder.surface, videoPath) == true) {
             videoDecode?.start()

@@ -32,7 +32,7 @@ class MainActivity : AppCompatActivity() {
     // binding name is equal to you layout name
     private lateinit var binding: ActivityMainBinding
 
-    val downloadCoroutineScope = CoroutineScope(Dispatchers.Default)
+    private val downloadCoroutineScope = CoroutineScope(Dispatchers.Default)
 
 
 
@@ -107,12 +107,8 @@ class MainActivity : AppCompatActivity() {
         catch (e: Exception) {
             Log.v("kevin IOException", e.toString())
         } finally {
-            if (inputStream != null){
-                inputStream.close()
-            }
-            if (httpURLConnection != null) {
-                httpURLConnection.disconnect()
-            }
+            inputStream.close()
+            httpURLConnection.disconnect()
 
         }
     }
@@ -223,7 +219,6 @@ class MainActivity : AppCompatActivity() {
                 withContext(Dispatchers.Main) {
                     binding.showDonwloadImag.setImageBitmap(downloader.img)
                 }
-
                 saveImage()
             }
         }
