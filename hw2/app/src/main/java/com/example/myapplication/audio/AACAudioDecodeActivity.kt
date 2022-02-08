@@ -2,7 +2,11 @@ package com.example.myapplication.audio
 
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
+import android.os.PersistableBundle
+import android.widget.Button
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import com.example.myapplication.R
 //import com.example.myapplication.databinding.AudioActivityBinding
@@ -16,14 +20,15 @@ class AACAudioDecodeActivity : AppCompatActivity() {
             Intent(context, AACAudioDecodeActivity::class.java)
     }
 
-//    private val audioDecoder: AACAudioDecoderThread by lazy {
-//        AACAudioDecoderThread()
-//    }
-
-    private val audioPathAAC by lazy {
-        resources.openRawResourceFd(R.raw.bensound_littleidea_aac)
+    private val audioDecoder: AACAudioDecoderThread by lazy {
+        AACAudioDecoderThread()
     }
 
+    private val audioPathAAC by lazy {
+        resources.openRawResourceFd(R.raw.sample_aac)
+    }
+
+//    @RequiresApi(Build.VERSION_CODES.N)
 //    override fun onCreate(savedInstanceState: Bundle?) {
 //        super.onCreate(savedInstanceState)
 //        val binding = AudioActivityBinding.inflate(layoutInflater)
@@ -34,8 +39,19 @@ class AACAudioDecodeActivity : AppCompatActivity() {
 //        }
 //    }
 
-//    override fun onPause() {
-//        super.onPause()
-//        audioDecoder.stop()
-//    }
+    @RequiresApi(Build.VERSION_CODES.N)
+    override fun onCreate(savedInstanceState: Bundle?, persistentState: PersistableBundle?) {
+        super.onCreate(savedInstanceState, persistentState)
+        setContentView(R.layout.activity_audio)
+
+        val playButton = findViewById<Button>(R.id.playButton)
+        playButton.setOnClickListener {
+            audioDecoder.startPlay(audioPathAAC)
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        audioDecoder.pause()
+    }
 }
