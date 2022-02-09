@@ -5,10 +5,11 @@ import android.media.*
 import android.media.MediaCodec.BufferInfo
 import android.media.MediaCodec.createDecoderByType
 import android.os.Build
-import android.os.Handler
 import android.util.Log
 import androidx.annotation.RequiresApi
-import java.nio.ByteBuffer
+import com.example.myapplication.AudioTime
+
+import android.media.AudioTrack
 
 
 class AACAudioDecoderThread {
@@ -19,14 +20,12 @@ class AACAudioDecoderThread {
 
     private lateinit var extractor: MediaExtractor
     private lateinit var decoder: MediaCodec
-    private lateinit var mediaSync: MediaSync
+    private lateinit var audioTime: AudioTime
 
     private var isStop = false
     private var isOver = false
-    //0 >> 44100
     private var sampleRate = 44100
-    var audioTrack: AudioTrack? = null
-    var keepGoing = false
+    private var audioTrack: AudioTrack? = null
 
     @RequiresApi(Build.VERSION_CODES.N)
     fun startPlay(file: AssetFileDescriptor) {
@@ -38,7 +37,7 @@ class AACAudioDecoderThread {
             e.printStackTrace()
         }
 
-        var channel = 0
+        //create audio decoder
         (0 until extractor.trackCount).forEach { trackNumber ->
             val format = extractor.getTrackFormat(trackNumber)
             val mime = format.getString(MediaFormat.KEY_MIME)
@@ -48,31 +47,27 @@ class AACAudioDecoderThread {
 
                 decoder = createDecoderByType(mime)
                 decoder.configure(format, null, null, 0)
-
                 sampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
                 decoder.start()
-                Thread(aacDecoderAndPlayRunnable).start()
+
+                Thread(audioDecoderAndPlayRunnable).start()
             }
         }
     }
     @RequiresApi(Build.VERSION_CODES.M)
-    private var aacDecoderAndPlayRunnable = Runnable { AACDecoderAndPlay() }
+    private var audioDecoderAndPlayRunnable = Runnable { audioDecoderAndPlay() }
 
     @RequiresApi(Build.VERSION_CODES.M)
-    fun AACDecoderAndPlay() {
-        val inputBuffers: Array<ByteBuffer> = decoder.inputBuffers
-        var outputBuffers: Array<ByteBuffer> = decoder.outputBuffers
+    fun audioDecoderAndPlay() {
+
         val info = BufferInfo()
 
-
-        //setting audiotrack and play it
+        //setting audioTrack and play it
         val buffsize: Int = AudioTrack.getMinBufferSize(
             sampleRate,
             AudioFormat.CHANNEL_OUT_STEREO,
             AudioFormat.ENCODING_PCM_16BIT
         )
-//        val buffsize = 4 * minBuffsize
-        // create an audiotrack object
         audioTrack= AudioTrack(
             AudioManager.STREAM_MUSIC, sampleRate,
             AudioFormat.CHANNEL_OUT_STEREO,
@@ -82,18 +77,15 @@ class AACAudioDecoderThread {
         )
         audioTrack!!.play()
 
-        mediaSync.setAudioTrack(audioTrack)
-
         while(!isOver){
             while (!isStop) {
                 val inIndex: Int = decoder.dequeueInputBuffer(TIMEOUT_US)
+
                 if (inIndex >= 0) {
-                    val buffer = inputBuffers[inIndex]
-                    val sampleSize: Int = extractor.readSampleData(buffer, 0)
+                    //queue input buffer
+                    val buffer = decoder.getInputBuffer(inIndex)
+                    val sampleSize: Int = extractor.readSampleData(buffer!!, 0)
                     if (sampleSize < 0) {
-                        // We shouldn't stop the playback at this point, just pass the EOS
-                        // flag to decoder, we will get it again from the
-                        // dequeueOutputBuffer
                         Log.d("DecodeActivity", "InputBuffer BUFFER_FLAG_END_OF_STREAM")
                         decoder.queueInputBuffer(
                             inIndex,
@@ -107,19 +99,14 @@ class AACAudioDecoderThread {
                             inIndex,
                             0,
                             sampleSize,
-                            extractor.sampleTime ?: 0L,
+                            extractor.sampleTime,
                             0
                         )
                         extractor.advance()
                     }
-                    val outIndex: Int = decoder.dequeueOutputBuffer(info, TIMEOUT_US) ?: -1
-                    val bufferInfo = MediaCodec.BufferInfo()
-                    var startWhen = System.currentTimeMillis()
-                    when (outIndex) {
-                        MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED -> {
-                            Log.d("DecodeActivity", "INFO_OUTPUT_BUFFERS_CHANGED")
-                            outputBuffers = decoder.outputBuffers
-                        }
+
+                    //dequeue output buffer
+                    when (val outIndex: Int = decoder.dequeueOutputBuffer(info, TIMEOUT_US)) {
                         MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
                             val format: MediaFormat = decoder.outputFormat
                             Log.d("DecodeActivity", "New format $format")
@@ -130,30 +117,20 @@ class AACAudioDecoderThread {
                             "dequeueOutputBuffer timed out!"
                         )
                         else -> {
-                            sleepRender(bufferInfo, startWhen)
-
-                            val outBuffer = outputBuffers[outIndex]
-                            Log.v(
-                                "DecodeActivity",
-                                "We can't use this buffer but render it due to the API limit, $outBuffer"
-                            )
+                            val outBuffer = decoder.getOutputBuffer(outIndex)
                             val chunk = ByteArray(info.size)
-                            outBuffer[chunk] // Read the buffer all at once
-                            //for mediaSync
-                            mediaSync.queueAudio(outBuffer, outIndex, bufferInfo.presentationTimeUs)
-
-                            outBuffer.clear() // ** MUST DO!!! OTHERWISE THE NEXT TIME YOU GET THIS SAME BUFFER BAD THINGS WILL HAPPEN
+                            outBuffer?.get(chunk)
+                            outBuffer!!.clear()
                             audioTrack!!.write(
                                 chunk,
                                 info.offset,
                                 info.offset + info.size
-                            ) // AudioTrack write data
-
+                            )
                             decoder.releaseOutputBuffer(outIndex, false)
-
+                            //update current audio time
+                            setTimeValue()
                         }
                     }
-
                     // All decoded frames have been rendered, we can stop playing now
                     if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
                         Log.d("DecodeActivity", "OutputBuffer BUFFER_FLAG_END_OF_STREAM")
@@ -162,7 +139,7 @@ class AACAudioDecoderThread {
                 }
             }
         }
-//        release()
+        release()
     }
 
     fun release() {
@@ -187,19 +164,28 @@ class AACAudioDecoderThread {
     }
 
 //    根據時間戳對齊數據
-    private fun sleepRender(audioBufferInfo: MediaCodec.BufferInfo, startMs: Long) {
-        // 这里的时间是 毫秒  presentationTimeUs 的时间是累加的 以微秒进行一帧一帧的累加
-        val timeDifference = audioBufferInfo.presentationTimeUs / 1000 - (System.currentTimeMillis() - startMs)
-        if (timeDifference > 0) {
-            try {
-                Thread.sleep(timeDifference)
-            } catch (e: InterruptedException) {
-                e.printStackTrace()
-            }
-        }
+//    private fun sleepRender(audioBufferInfo: MediaCodec.BufferInfo, startMs: Long) {
+//        // 这里的时间是 毫秒  presentationTimeUs 的时间是累加的 以微秒进行一帧一帧的累加
+//        val timeDifference = audioBufferInfo.presentationTimeUs / 1000 - (System.currentTimeMillis() - startMs)
+//        if (timeDifference > 0) {
+//            try {
+//                Thread.sleep(timeDifference)
+//            } catch (e: InterruptedException) {
+//                e.printStackTrace()
+//            }
+//        }
+//    }
+
+//    fun setMediaSync(mMediaSync: MediaSync){
+//        mediaSync = mMediaSync
+//    }
+
+    fun setAudioTimeToAudioThread(aAudioTime: AudioTime){
+        audioTime = aAudioTime
     }
 
-    fun setMediaSync(mMediaSync: MediaSync){
-        mediaSync = mMediaSync
+    private fun setTimeValue() {
+        val numFramesPlayed = audioTrack!!.playbackHeadPosition
+        audioTime.setAudioTime((numFramesPlayed * 1000000L) / sampleRate)
     }
 }
