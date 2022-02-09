@@ -12,7 +12,7 @@ import com.example.myapplication.AudioTime
 import android.media.AudioTrack
 
 
-class AACAudioDecoderThread {
+class AudioDecoderThread {
 
     companion object {
         private const val TIMEOUT_US = 1_000L
@@ -63,7 +63,7 @@ class AACAudioDecoderThread {
         val info = BufferInfo()
 
         //setting audioTrack and play it
-        val buffsize: Int = AudioTrack.getMinBufferSize(
+        val buffSize: Int = AudioTrack.getMinBufferSize(
             sampleRate,
             AudioFormat.CHANNEL_OUT_STEREO,
             AudioFormat.ENCODING_PCM_16BIT
@@ -72,7 +72,7 @@ class AACAudioDecoderThread {
             AudioManager.STREAM_MUSIC, sampleRate,
             AudioFormat.CHANNEL_OUT_STEREO,
             AudioFormat.ENCODING_PCM_16BIT,
-            buffsize,
+            buffSize,
             AudioTrack.MODE_STREAM
         )
         audioTrack!!.play()

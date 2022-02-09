@@ -12,7 +12,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="124dp"
         android:layout_marginTop="160dp"
-        android:text="play MP4 video"
+        android:text="@string/play_mp4_video"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 

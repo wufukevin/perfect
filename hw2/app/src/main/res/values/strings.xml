@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">My Application</string>
+    <string name="pause">Pause</string>
+    <string name="play_mp4_video">play MP4 video</string>
 </resources>

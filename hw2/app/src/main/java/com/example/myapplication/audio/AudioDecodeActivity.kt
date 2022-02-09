@@ -12,16 +12,16 @@ import com.example.myapplication.R
 //import com.example.myapplication.databinding.AudioActivityBinding
 
 
-class AACAudioDecodeActivity : AppCompatActivity() {
+class AudioDecodeActivity : AppCompatActivity() {
 
     companion object {
 
         fun newIntent(context: Context): Intent =
-            Intent(context, AACAudioDecodeActivity::class.java)
+            Intent(context, AudioDecodeActivity::class.java)
     }
 
-    private val audioDecoder: AACAudioDecoderThread by lazy {
-        AACAudioDecoderThread()
+    private val audioDecoder: AudioDecoderThread by lazy {
+        AudioDecoderThread()
     }
 
     private val audioPathAAC by lazy {

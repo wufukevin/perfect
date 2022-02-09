@@ -10,5 +10,6 @@
         android:layout_height="wrap_content"
         android:text="play"
         tools:layout_editor_absoluteX="158dp"
-        tools:layout_editor_absoluteY="66dp" />
+        tools:layout_editor_absoluteY="66dp"
+        tools:ignore="MissingConstraints" />
 </androidx.constraintlayout.widget.ConstraintLayout>
