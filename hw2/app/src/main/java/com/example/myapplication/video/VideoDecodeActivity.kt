@@ -30,7 +30,7 @@ class VideoDecodeActivity : AppCompatActivity(), SurfaceHolder.Callback {
     private lateinit var audioTime: AudioTime
 
     private val videoPath by lazy {
-        resources.openRawResourceFd(R.raw.sample3)
+        resources.openRawResourceFd(R.raw.sample2)
     }
     private var playVideo = true
 

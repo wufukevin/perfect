@@ -1,5 +1,6 @@
 package com.example.myapplication.video
 
+import android.annotation.SuppressLint
 import android.content.res.AssetFileDescriptor
 import android.media.*
 import android.os.Build
@@ -53,8 +54,11 @@ class VideoDecodeThread : Thread() {
         }
     }
 
+    @SuppressLint("WrongConstant")
     override fun run() {
         val newBufferInfo = MediaCodec.BufferInfo()
+        var keepDequeOutputBuffer = true
+        var outIndex = 1
 
         while (isOver.not()) {
             while (isStop.not()) {
@@ -70,8 +74,10 @@ class VideoDecodeThread : Thread() {
                     }
                 }
 
+
                 //queue output buffer
-                when (val outIndex = decoder.dequeueOutputBuffer(newBufferInfo, 1000)) {
+                if (keepDequeOutputBuffer)  outIndex = decoder.dequeueOutputBuffer(newBufferInfo, 1000)
+                when (outIndex) {
                     MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
                         Log.d(TAG, "INFO_OUTPUT_FORMAT_CHANGED format : " + decoder.outputFormat)
                     }
@@ -82,11 +88,26 @@ class VideoDecodeThread : Thread() {
                         val videoCurrentTime = newBufferInfo.presentationTimeUs
                         val audioCurrentTime = audioTime.getAudioTime()
                         val sleepTime: Long = (videoCurrentTime - audioCurrentTime)/1000
+                        var render  = true
 
-                        // if video faster than audio, let video sleep 5o sync them
-                        if (sleepTime > 0) sleep(sleepTime)
-                        Log.d("kevin", "video: $videoCurrentTime // audio: $audioCurrentTime // sleep: $sleepTime")
-                        decoder.releaseOutputBuffer(outIndex, true /* Surface init */)
+//                        Log.d("kevin", "video: $videoCurrentTime // audio: $audioCurrentTime // sleep: $sleepTime")
+
+                        if (sleepTime > 10 ){
+                            // if video faster than audio, let video wait another loop
+                            Log.d("kevin", "video: $videoCurrentTime // audio: $audioCurrentTime // sleep: $sleepTime  pause")
+                            keepDequeOutputBuffer = false
+                            break
+                        }
+                        else if (sleepTime < -60){
+                            // if video slower than audio too much , don't show the view
+                            Log.d("kevin", "video: $videoCurrentTime // audio: $audioCurrentTime // sleep: $sleepTime  drop")
+                            render = false
+                        }
+                        else {
+                            Log.d("kevin", "video: $videoCurrentTime // audio: $audioCurrentTime // sleep: $sleepTime")
+                        }
+                        keepDequeOutputBuffer = true
+                        decoder.releaseOutputBuffer(outIndex, render)
                     }
                 }
                 // All decoded frames have been rendered, we can stop playing now

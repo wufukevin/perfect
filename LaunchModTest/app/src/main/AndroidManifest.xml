@@ -10,7 +10,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.LaunchModTest">
         <activity
+            android:name=".ThirdActivity"
+            android:exported="false" />
+        <activity
             android:name=".SecondActivity"
+            android:launchMode="singleInstance"
             android:exported="false" />
         <activity
             android:name=".MainActivity"
