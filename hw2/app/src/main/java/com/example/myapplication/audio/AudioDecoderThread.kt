@@ -10,6 +10,7 @@ import androidx.annotation.RequiresApi
 import com.example.myapplication.AudioTime
 
 import android.media.AudioTrack
+import java.nio.ByteBuffer
 
 
 class AudioDecoderThread {
@@ -21,6 +22,8 @@ class AudioDecoderThread {
     private lateinit var extractor: MediaExtractor
     private lateinit var decoder: MediaCodec
     private lateinit var audioTime: AudioTime
+//----------------------------
+    private lateinit var mediaSync: MediaSync
 
     private var isStop = false
     private var isOver = false
@@ -33,6 +36,8 @@ class AudioDecoderThread {
         extractor = MediaExtractor()
         try {
             extractor.setDataSource(file)
+//            val path = Environment.getExternalStorageDirectory().path +"/DCIM/sample4k.mp4"
+//            extractor.setDataSource(path)
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -76,6 +81,15 @@ class AudioDecoderThread {
             AudioTrack.MODE_STREAM
         )
         audioTrack!!.play()
+//        --------------------
+//        mediaSync.setAudioTrack(audioTrack)
+//        mediaSync.apply {
+//            setCallback(object:MediaSync.Callback() {
+//                override fun onAudioBufferConsumed(p0: MediaSync, p1: ByteBuffer, p2: Int) {
+//                    p1.clear()
+//                }
+//            }, null)
+//        }
 
         while(!isOver){
             while (!isStop) {
@@ -127,6 +141,16 @@ class AudioDecoderThread {
                                 info.offset + info.size
                             )
                             decoder.releaseOutputBuffer(outIndex, false)
+
+                            //                            --------------------
+//                            val outBuffer = decoder.getOutputBuffer(outIndex)
+//                            val copyBuffer = ByteBuffer.allocate(outBuffer!!.remaining())
+//                            copyBuffer.put(outBuffer)
+//                            copyBuffer.flip()
+//                            decoder.releaseOutputBuffer(outIndex, false)
+//                            Log.d("kevin", "mediasync queue audio")
+//                            mediaSync.queueAudio(copyBuffer, outIndex, info.presentationTimeUs)
+
                             //update current audio time
                             setTimeValue()
                         }
@@ -187,5 +211,10 @@ class AudioDecoderThread {
     private fun setTimeValue() {
         val numFramesPlayed = audioTrack!!.playbackHeadPosition
         audioTime.setAudioTime((numFramesPlayed * 1000000L) / sampleRate)
+    }
+
+    //        --------------------
+    fun setMediaSync(mMediaSync: MediaSync){
+        mediaSync = mMediaSync
     }
 }

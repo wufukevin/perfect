@@ -10,6 +10,10 @@ import androidx.annotation.RequiresApi
 import com.example.myapplication.AudioTime
 
 
+
+
+
+
 class VideoDecodeThread : Thread() {
 
     companion object {
@@ -30,7 +34,14 @@ class VideoDecodeThread : Thread() {
         audioTime = aAudioTime
         try {
             extractor = MediaExtractor()
-            extractor.setDataSource(file)
+
+            try {
+//                var path = Environment.getExternalStorageDirectory().path +"/DCIM/sample4k.mp4"
+//                extractor.setDataSource(path)
+                extractor.setDataSource(file)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
 
             //create video decoder
             (0..extractor.trackCount).forEach { index ->

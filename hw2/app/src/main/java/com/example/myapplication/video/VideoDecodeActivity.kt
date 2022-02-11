@@ -6,6 +6,7 @@ import android.content.Intent
 import android.media.*
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.widget.Button
@@ -15,6 +16,7 @@ import com.example.myapplication.R
 import com.example.myapplication.audio.AudioDecoderThread
 
 import com.example.myapplication.AudioTime
+import java.nio.ByteBuffer
 
 class VideoDecodeActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
@@ -28,9 +30,11 @@ class VideoDecodeActivity : AppCompatActivity(), SurfaceHolder.Callback {
     private lateinit var surfaceView: SurfaceView
     private lateinit var pauseAndPlayButton: Button
     private lateinit var audioTime: AudioTime
+//    ---------------------------
+//    private lateinit var mMediaSync: MediaSync
 
     private val videoPath by lazy {
-        resources.openRawResourceFd(R.raw.sample2)
+        resources.openRawResourceFd(R.raw.sample3)
     }
     private var playVideo = true
 
@@ -73,12 +77,19 @@ class VideoDecodeActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
     @RequiresApi(Build.VERSION_CODES.N)
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+        //    ---------------------------
+//        mMediaSync = MediaSync()
+//        mMediaSync.setSurface(holder.surface)
+//        val mediaSyncSurface = mMediaSync.createInputSurface()
+//        audioDecoder.setMediaSync(mMediaSync)
+//        mMediaSync.playbackParams = PlaybackParams().setSpeed(1.0f)
 
         audioTime.setAudioTime(0)
         audioDecoder.setAudioTimeToAudioThread(audioTime)
 
         //start play video and audio
         videoDecoder.init(holder.surface, videoPath, audioTime)
+//        videoDecoder.init(mediaSyncSurface, videoPath, audioTime)
         videoDecoder.start()
         audioDecoder.startPlay(videoPath)
     }

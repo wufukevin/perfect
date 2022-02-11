@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.myapplication">
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
 
     <application
         android:allowBackup="true"
@@ -10,9 +12,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MyApplication">
         <activity
+            android:requestLegacyExternalStorage="true"
             android:name=".MediaPlayerActivity"
             android:exported="false" />
         <activity
+            android:requestLegacyExternalStorage="true"
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
@@ -21,7 +25,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".video.VideoDecodeActivity" />
+        <activity
+            android:requestLegacyExternalStorage="true"
+            android:name=".video.VideoDecodeActivity" />
     </application>
 
 </manifest>
