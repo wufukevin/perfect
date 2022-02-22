@@ -7,10 +7,8 @@ import android.media.MediaCodec.createDecoderByType
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
-import com.example.hw3.AudioTime
 
 import android.media.AudioTrack
-import java.nio.ByteBuffer
 
 
 class AudioDecodeThread {
@@ -152,7 +150,8 @@ class AudioDecodeThread {
 //                            mediaSync.queueAudio(copyBuffer, outIndex, info.presentationTimeUs)
 
                             //update current audio time
-                            setTimeValue()
+//                            setTimeValue()
+                            setTimeValueInPresentationUs(info.presentationTimeUs)
                         }
                     }
                     // All decoded frames have been rendered, we can stop playing now
@@ -166,7 +165,7 @@ class AudioDecodeThread {
         release()
     }
 
-    fun release() {
+    private fun release() {
         decoder.stop()
         decoder.release()
         extractor.release()
@@ -213,8 +212,16 @@ class AudioDecodeThread {
         audioTime.setAudioTime((numFramesPlayed * 1000000L) / sampleRate)
     }
 
-    //        --------------------
+    private fun setTimeValueInPresentationUs(presentationTimeUs: Long) {
+        audioTime.setAudioTime(presentationTimeUs)
+    }
+
     fun setMediaSync(mMediaSync: MediaSync){
         mediaSync = mMediaSync
     }
+
+    fun seekTo(position: Long) {
+        extractor.seekTo(position, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+    }
 }
+

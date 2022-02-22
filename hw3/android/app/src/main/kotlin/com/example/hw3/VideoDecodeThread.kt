@@ -7,7 +7,7 @@ import android.os.Build
 import android.util.Log
 import android.view.Surface
 import androidx.annotation.RequiresApi
-import com.example.hw3.AudioTime
+import kotlin.math.abs
 
 
 class VideoDecodeThread : Thread() {
@@ -20,6 +20,10 @@ class VideoDecodeThread : Thread() {
     private lateinit var extractor: MediaExtractor
     private lateinit var decoder: MediaCodec
     private lateinit var audioTime: AudioTime
+    private var fileDuration = 0L
+    private var videoCurrentTime = 0L
+    private var isSeeking = false
+    private var seekTo = 0L
 
     private var isStop = false
     private var isOver = false
@@ -53,6 +57,9 @@ class VideoDecodeThread : Thread() {
                     } catch (e: IllegalStateException) {
                         Log.e(TAG, "codec $mime failed configuration. $e")
                     }
+                    // get video duration
+                    fileDuration = format.getLong(MediaFormat.KEY_DURATION)
+
                     decoder.start()
                 }
             }
@@ -65,7 +72,7 @@ class VideoDecodeThread : Thread() {
     @SuppressLint("WrongConstant")
     override fun run() {
         val newBufferInfo = MediaCodec.BufferInfo()
-        var keepDequeOutputBuffer = true
+        var keepDequeueOutputBuffer = true
         var outIndex = 1
 
         while (isOver.not()) {
@@ -82,9 +89,8 @@ class VideoDecodeThread : Thread() {
                     }
                 }
 
-
                 //queue output buffer
-                if (keepDequeOutputBuffer)  outIndex = decoder.dequeueOutputBuffer(newBufferInfo, 1000)
+                if (keepDequeueOutputBuffer)  outIndex = decoder.dequeueOutputBuffer(newBufferInfo, 1000)
                 when (outIndex) {
                     MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
                         Log.d(TAG, "INFO_OUTPUT_FORMAT_CHANGED format : " + decoder.outputFormat)
@@ -93,28 +99,40 @@ class VideoDecodeThread : Thread() {
                         Log.d(TAG, "INFO_TRY_AGAIN_LATER")
                     }
                     else -> {
-                        val videoCurrentTime = newBufferInfo.presentationTimeUs
+                        videoCurrentTime = newBufferInfo.presentationTimeUs
                         val audioCurrentTime = audioTime.getAudioTime()
                         val sleepTime: Long = (videoCurrentTime - audioCurrentTime)/1000
                         var render  = true
 
-//                        Log.d("kevin", "video: $videoCurrentTime // audio: $audioCurrentTime // sleep: $sleepTime")
-
-                        if (sleepTime > 10 ){
-                            // if video faster than audio, let video wait another loop
-                            Log.d("kevin", "video: $videoCurrentTime // audio: $audioCurrentTime // sleep: $sleepTime  pause")
-                            keepDequeOutputBuffer = false
+                        // if seeking, video keep dequeue output buffer until its position is close to target position
+                        if (isSeeking){
+                            keepDequeueOutputBuffer = true
+                            decoder.releaseOutputBuffer(outIndex, true)
+                            if (abs(seekTo - audioCurrentTime) < 100000) {
+                                isSeeking = false
+                                Log.d("kevin", "seekTo: $seekTo // audio: $audioCurrentTime is seeking back~~")
+                            }
+                            Log.d("kevin", "video: $videoCurrentTime // audio: $audioCurrentTime // sleep: $sleepTime is seeking back~~")
                             break
                         }
-                        else if (sleepTime < -60){
-                            // if video slower than audio too much , don't show the view
-                            Log.d("kevin", "video: $videoCurrentTime // audio: $audioCurrentTime // sleep: $sleepTime  drop")
+
+                        if (sleepTime > 10){
+                            // if video faster than audio, let video wait another loop
+                            Log.d("kevin", "video: $videoCurrentTime // audio: $audioCurrentTime // sleep: $sleepTime")
+                            keepDequeueOutputBuffer = false
+                            break
+                        }
+                        else if (sleepTime < -100000){
+                            // if video slower than audio too much , don't show the view, and seek to audio time
+                            seekTo(audioCurrentTime)
+                            Log.d("kevin", "video: $videoCurrentTime // audio: $audioCurrentTime // sleep: $sleepTime")
                             render = false
                         }
                         else {
                             Log.d("kevin", "video: $videoCurrentTime // audio: $audioCurrentTime // sleep: $sleepTime")
                         }
-                        keepDequeOutputBuffer = true
+
+                        keepDequeueOutputBuffer = true
                         decoder.releaseOutputBuffer(outIndex, render)
                     }
                 }
@@ -128,7 +146,7 @@ class VideoDecodeThread : Thread() {
         release()
     }
 
-    fun release() {
+    private fun release() {
         decoder.stop()
         decoder.release()
         extractor.release()
@@ -147,4 +165,18 @@ class VideoDecodeThread : Thread() {
         isStop = false
     }
 
+    fun currentTime():Long {
+        return videoCurrentTime
+    }
+
+    fun fileDuration():Long {
+        return fileDuration
+    }
+
+    fun seekTo(position: Long) {
+        isSeeking = true
+        seekTo = position
+        extractor.seekTo(position, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+        Log.d("kevin", "video seek to $position------------------------------------------------------------------------------------------------")
+    }
 }

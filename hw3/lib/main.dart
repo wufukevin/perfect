@@ -1,10 +1,5 @@
-import 'dart:developer';
-import 'dart:math';
-
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:video_player/video_player.dart';
 
 
 void main() {
@@ -24,139 +19,33 @@ class MyApp extends StatelessWidget {
           title: const Text('Video'),
           backgroundColor: Colors.deepOrange[700],
         ),
-        body: TextureDemo(),
+        body: const TextureDemo(),
       ),
     );
-  }
-}
-
-
-
-class VideoPlayerDemo extends StatefulWidget{
-  @override
-  State<VideoPlayerDemo> createState() => _VideoPlayerDemoState();
-}
-
-class _VideoPlayerDemoState extends State<VideoPlayerDemo>{
-  VideoPlayerController _controller= VideoPlayerController.network('https://flutter.github.io/assets-for-api-docs/assets/videos/butterfly.mp4',);
-  var channel = MethodChannel('com.flutter.guide.MethodChannel');
-  var _data;
-
-  @override
-  void initState() {
-    _controller = VideoPlayerController.network('https://flutter.github.io/assets-for-api-docs/assets/videos/butterfly.mp4',);
-    super.initState();
-  }
-
-  @override
-  void dispose(){
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    _controller.initialize();
-    return Scaffold(
-      backgroundColor: Colors.grey[900],
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children:[
-            AspectRatio(
-              aspectRatio: 16/20,
-              child: VideoPlayer(_controller)
-            ),
-            Spacer(),
-            FloatingActionButton(
-              backgroundColor: Colors.white24,
-              highlightElevation: 0,
-              onPressed: (){
-                setState(() {
-                  if (_controller.value.isPlaying){
-                    _controller.pause();
-                  } else {
-                    _controller.play();
-                  }
-                });
-              },
-              child: Icon(
-                _controller.value.isPlaying ? Icons.pause: Icons.play_arrow,
-              ),
-            ),
-          ],
-        ),
-      )
-    );
-    throw UnimplementedError();
-  }
-  @override
-  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-    super.debugFillProperties(properties);
-    properties.add(DiagnosticsProperty('_data', _data));
-  }
-
-}
-
-
-class MethodChannelDemo extends StatefulWidget {
-  const MethodChannelDemo({Key? key}) : super(key: key);
-
-  @override
-  _MethodChannelDemoState createState() => _MethodChannelDemoState();
-}
-
-class _MethodChannelDemoState extends State<MethodChannelDemo> {
-  var channel = const MethodChannel('com.flutter.guide.MethodChannel');
-
-  var _data;
-
-  @override
-  Widget build(BuildContext context) {
-    debugPrint('kevin initial methodchanneldemo');
-    return Scaffold(
-      appBar: AppBar(),
-      body: Column(
-        children: [
-          const SizedBox(
-            height: 50,
-          ),
-          RaisedButton(
-            child: const Text('发送数据到原生'),
-            onPressed: () async {
-              var randomAge = Random();
-              var result = await channel
-                  .invokeMethod('sendData', {'name': 'kevin', 'age': randomAge.nextInt(100)});
-              var sentence = result['sentence'];
-              setState(() {
-                _data = sentence;
-              });
-            },
-          ),
-          Text('原生返回数据：$_data')
-        ],
-      ),
-    );
-  }
-
-  @override
-  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-    super.debugFillProperties(properties);
-    properties.add(DiagnosticsProperty('_data', _data));
   }
 }
 
 class TextureDemo extends StatefulWidget{
+  const TextureDemo({Key? key}) : super(key: key);
+
   @override
   _TextureDemoState createState() => _TextureDemoState();
 }
 
 class _TextureDemoState extends State<TextureDemo>{
+  // transfer message about texture ID
   var videoPlugin = const MethodChannel("VideoCall");
-  var texTureId = 123;
-  var playController = true;
-  double _currentSliderValue = 0;
+  // listen event for progress bar
+  var progressChannel = const EventChannel('VideoProgress');
+  // transfer message about seek video
+  var seekChannel = const MethodChannel('Seek');
 
+  late int texTureId;
+  late double fileDuration;
+
+  bool playController = true;
+  double currentSliderValue = 0;
+  bool isSeeking = false;
 
   @override
   void initState() {
@@ -165,16 +54,31 @@ class _TextureDemoState extends State<TextureDemo>{
   }
 
   init() async {
-    debugPrint('kevin initial TextureDemo');
-    texTureId = await videoPlugin.invokeMethod("initial Video");
-    //??
+    // debugPrint('kevin_hw3 initial TextureDemo');
+
+    var initResult = await videoPlugin.invokeMethod("initial Video");
+    texTureId = initResult['textureID'];
+    fileDuration = initResult['fileDuration'];
     setState(() {});
   }
+
   @override
   Widget build(BuildContext context) {
-    //   debugPrint('kevin build methodChannelDemo with textureID $texTureId');
+    // update progress
+    progressChannel.receiveBroadcastStream().listen(
+            (dynamic currentProgress) {
+          setState(() {
+            if(!isSeeking){
+              currentSliderValue = currentProgress;
+            }
+          });
+        },
+        onError: (dynamic currentProgress){}
+    );
+
     return Scaffold(
-        backgroundColor: Colors.grey[900],
+        // backgroundColor: Colors.grey[900],
+        backgroundColor: Colors.white,
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -184,14 +88,35 @@ class _TextureDemoState extends State<TextureDemo>{
                   child: Texture(textureId: texTureId,)
               ),
               Slider(
-                  value: _currentSliderValue,
-                  divisions: 100,
-                  label: '$_currentSliderValue',
+                  value: currentSliderValue,
+                  // divisions: 100,
+                  min: 0,
+                  max: fileDuration,
+                  label: toClockType(currentSliderValue),
+                  onChangeStart: (startValue) {
+                    setState(() {
+                      isSeeking = true;
+                    });
+                  },
+                  onChangeEnd: (endValue) {
+                    seekAndJumpTo(endValue);
+                    setState(() {
+                      isSeeking = false;
+                    });
+                  },
                   onChanged: (value) {
                     setState(() {
-                      _currentSliderValue = value;
+                      currentSliderValue = value;
                     });
                   }
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(toClockType(currentSliderValue)),
+                  const Text("  /  "),
+                  Text(toClockType(fileDuration)),
+                ],
               ),
               FloatingActionButton(
                 backgroundColor: Colors.white24,
@@ -218,7 +143,17 @@ class _TextureDemoState extends State<TextureDemo>{
           ),
         )
     );
-    throw UnimplementedError();
+  }
+  
+  seekAndJumpTo(double time) async {
+    await seekChannel.invokeMethod('seek video', {'time': time});
   }
 
+  String toClockType(double time) {
+    var min = time~/60;
+    var sec = (time%60).toInt();
+    var zero = (sec>9)? '' : '0';
+    
+    return '$min : $zero$sec';
+  }
 }
